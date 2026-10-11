@@ -73,6 +73,9 @@ if "hooks" not in data:
     data["hooks"] = {}
 
 hooks_config = {
+    "PreToolUse": [{"matcher": "AskUserQuestion,AskFollowupQuestion,ExitPlanMode", "hooks": [{"type": "command", "command": hook_cmd}]}],
+    "PermissionRequest": [{"matcher": "*", "hooks": [{"type": "command", "command": hook_cmd}]}],
+    "PostToolUse": [{"matcher": "AskUserQuestion,AskFollowupQuestion,ExitPlanMode", "hooks": [{"type": "command", "command": hook_cmd}]}],
     "Notification": [{"matcher": "*", "hooks": [{"type": "command", "command": hook_cmd}]}],
     "Stop": [{"matcher": "*", "hooks": [{"type": "command", "command": hook_cmd}]}],
     "UserPromptSubmit": [{"matcher": "*", "hooks": [{"type": "command", "command": hook_cmd}]}],

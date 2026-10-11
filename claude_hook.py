@@ -172,25 +172,38 @@ def show_choices_alert(question_title: str, choices: List[Tuple[int, str]]):
     Affiche une alerte de CHOIX MULTIPLE sur l'écran LCD 480x320 :
     - Question affichée en haut
     - Chaque option numérotée : [1] Option A, [2] Option B...
-    - Allume les LEDs Cyan (#00D4FF) uniquement pour les touches 1 à N utilisables !
-    - Les touches non utilisées restent éteintes (#000000).
+    - Allume les LEDs Cyan (#00D4FF) pour les touches 1 à N utilisables !
+    - Touche 7 (Valider) : Vert (#00FF88)
+    - Touche 8 (Annuler) : Rouge (#FF2222)
     """
     cyan_color = "#00D4FF"
 
+    clean_title = clean_markdown(question_title)
+    if len(clean_title) > 65:
+        clean_title = clean_title[:62].rstrip() + "..."
+
     # Construction du texte
-    lines = [f"{{warning}} CHOIX MULTIPLE", "", question_title, ""]
+    lines = [f"{{warning}} CHOIX MULTIPLE", "", clean_title, ""]
     active_keys = set()
-    for num, label in choices[:8]:
-        lines.append(f" [{num}] {label}")
+    for num, label in choices[:6]:
+        clean_label = clean_markdown(label)
+        if len(clean_label) > 40:
+            clean_label = clean_label[:38].rstrip() + "..."
+        lines.append(f" [{num}] {clean_label}")
         active_keys.add(num)
 
     full_text = "\n".join(lines)
 
-    # Masque de LEDs : Cyan pour les touches actives (1 à 8 indexées 0 à 7)
+    # Masque de LEDs :
+    # Touches 1 à 6 : Cyan si option active
+    # Touche 7 : Valider (Vert)
+    # Touche 8 : Annuler (Rouge)
     leds = ["#000000"] * 8
     for k in active_keys:
-        if 1 <= k <= 8:
+        if 1 <= k <= 6:
             leds[k - 1] = cyan_color
+    leds[6] = "#00FF88"  # Touche 7 : Valider
+    leds[7] = "#FF2222"  # Touche 8 : Annuler
 
     try:
         with EezBotFun() as pad:
@@ -424,7 +437,62 @@ def handle_payload(payload: dict):
     """Traite le payload JSON reçu de Claude Code sur stdin."""
     event_name = payload.get("hook_event_name", "")
 
-    # 1. Événement NOTIFICATION (permission demandée, elicitation, etc.)
+    # 1. Événement PRE_TOOL_USE (Détection immédiate des questions interactives Claude Code)
+    # Permet d'afficher la question à choix multiples AVANT que l'utilisateur ne réponde !
+    if event_name == "PreToolUse":
+        tool_name = payload.get("tool_name", "")
+        tool_input = payload.get("tool_input", {})
+
+        if tool_name in ("AskUserQuestion", "AskFollowupQuestion", "ask_question", "ExitPlanMode"):
+            if tool_name == "ExitPlanMode":
+                show_yes_no_alert("Quitter le mode plan et exécuter les modifications ?")
+                return
+
+            questions = tool_input.get("questions")
+            if isinstance(questions, list) and len(questions) > 0:
+                q_item = questions[0]
+                q_title = q_item.get("question") or q_item.get("header") or "Choix à faire :"
+                raw_opts = q_item.get("options", [])
+                choices = []
+                for idx, opt in enumerate(raw_opts, start=1):
+                    if isinstance(opt, dict):
+                        label = opt.get("label") or opt.get("description") or f"Option {idx}"
+                    else:
+                        label = str(opt)
+                    choices.append((idx, label))
+                if choices:
+                    show_choices_alert(q_title, choices)
+                    return
+            elif "question" in tool_input:
+                q_title = tool_input.get("question", "")
+                raw_opts = tool_input.get("options", [])
+                choices = []
+                for idx, opt in enumerate(raw_opts, start=1):
+                    label = opt.get("label", str(opt)) if isinstance(opt, dict) else str(opt)
+                    choices.append((idx, label))
+                if choices:
+                    show_choices_alert(q_title, choices)
+                    return
+        return
+
+    # 2. Événement PERMISSION_REQUEST (Claude demande la validation d'une commande/outil)
+    if event_name == "PermissionRequest":
+        tool_name = payload.get("tool_name", "Outil")
+        tool_input = payload.get("tool_input", {})
+        cmd = tool_input.get("command") or tool_input.get("file_path") or tool_input.get("description") or ""
+        msg = f"{tool_name}: {cmd}" if cmd else f"Exécution demandée pour l'outil : {tool_name}"
+        show_permission_alert(msg)
+        return
+
+    # 3. Événement POST_TOOL_USE (L'utilisateur a répondu à la question ou l'outil s'est terminé)
+    if event_name == "PostToolUse":
+        tool_name = payload.get("tool_name", "")
+        if tool_name in ("AskUserQuestion", "AskFollowupQuestion", "ExitPlanMode"):
+            # L'utilisateur a répondu, on restaure l'affichage en attendant que Claude finisse
+            reset_display()
+        return
+
+    # 4. Événement NOTIFICATION (permission demandée, alerte système, etc.)
     if event_name == "Notification":
         notif_type = payload.get("notification_type", "prompt")
         msg = payload.get("message", "")
@@ -433,33 +501,32 @@ def handle_payload(payload: dict):
         if not msg and transcript_path:
             msg = extract_last_assistant_message(transcript_path)
 
-        if notmsg := msg:
+        if not msg:
             if notif_type == "permission_prompt":
-                show_permission_alert("Autorisation d'outil demandée dans le terminal.")
-                return
+                msg = "Autorisation d'outil demandée dans le terminal."
             elif notif_type == "idle_prompt":
                 msg = "En attente de vos instructions..."
             else:
                 msg = "Votre attention est demandée."
 
-        # Si c'est une demande de permission, proposer [1] Autoriser / [2] Refuser
+        # Demande de permission
         if notif_type == "permission_prompt":
-            show_permission_alert(notmsg)
+            show_permission_alert(msg)
             return
 
         # Vérifier si la notification contient des choix multiples
-        has_choices, q_title, choices = extract_choices(notmsg)
+        has_choices, q_title, choices = extract_choices(msg)
         if has_choices:
             show_choices_alert(q_title, choices)
             return
 
-        clean_msg = clean_markdown(notmsg)
+        clean_msg = clean_markdown(msg)
         if len(clean_msg) > 175:
             clean_msg = clean_msg[:172].rstrip() + "..."
         show_question_alert(clean_msg, title="{warning} ATTENTION REQUISE")
         return
 
-    # 2. Événement STOP (Fin de tour de parole de Claude)
+    # 5. Événement STOP (Fin de tour de parole de Claude)
     if event_name == "Stop":
         last_msg = payload.get("last_assistant_message", "")
         transcript_path = payload.get("transcript_path", "")
@@ -484,7 +551,7 @@ def handle_payload(payload: dict):
             show_finished_status(display_text)
         return
 
-    # 3. Événement USER_PROMPT_SUBMIT (L'utilisateur a répondu / tapé une commande)
+    # 6. Événement USER_PROMPT_SUBMIT (L'utilisateur a répondu / tapé une commande)
     if event_name == "UserPromptSubmit":
         reset_display()
         return

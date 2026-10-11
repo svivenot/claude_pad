@@ -126,6 +126,39 @@ Dans WSL2, modifiez `~/.claude/settings.json` pour appeler Python Windows :
 ```json
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion,AskFollowupQuestion,ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python.exe /mnt/c/Users/<votre_utilisateur>/claude_pad/claude_hook.py"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python.exe /mnt/c/Users/<votre_utilisateur>/claude_pad/claude_hook.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion,AskFollowupQuestion,ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python.exe /mnt/c/Users/<votre_utilisateur>/claude_pad/claude_hook.py"
+          }
+        ]
+      }
+    ],
     "Notification": [
       {
         "matcher": "*",

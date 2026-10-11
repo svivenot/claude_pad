@@ -65,20 +65,12 @@ if (-not $settingsObj.ContainsKey("hooks")) {
 }
 
 $hookCommand = "$pythonPath $hookPath"
-$events = @("Notification", "Stop", "UserPromptSubmit")
-foreach ($ev in $events) {
-    $settingsObj["hooks"][$ev] = @(
-        @{
-            matcher = "*"
-            hooks = @(
-                @{
-                    type = "command"
-                    command = $hookCommand
-                }
-            )
-        }
-    )
-}
+$settingsObj["hooks"]["PreToolUse"] = @(@{ matcher = "AskUserQuestion,AskFollowupQuestion,ExitPlanMode"; hooks = @(@{ type = "command"; command = $hookCommand }) })
+$settingsObj["hooks"]["PermissionRequest"] = @(@{ matcher = "*"; hooks = @(@{ type = "command"; command = $hookCommand }) })
+$settingsObj["hooks"]["PostToolUse"] = @(@{ matcher = "AskUserQuestion,AskFollowupQuestion,ExitPlanMode"; hooks = @(@{ type = "command"; command = $hookCommand }) })
+$settingsObj["hooks"]["Notification"] = @(@{ matcher = "*"; hooks = @(@{ type = "command"; command = $hookCommand }) })
+$settingsObj["hooks"]["Stop"] = @(@{ matcher = "*"; hooks = @(@{ type = "command"; command = $hookCommand }) })
+$settingsObj["hooks"]["UserPromptSubmit"] = @(@{ matcher = "*"; hooks = @(@{ type = "command"; command = $hookCommand }) })
 
 $settingsObj | ConvertTo-Json -Depth 10 | Set-Content $settingsFile -Encoding UTF8
 Write-Host "[+] Configuration Claude Code enregistrée !" -ForegroundColor Green
