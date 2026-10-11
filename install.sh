@@ -57,7 +57,9 @@ echo "[*] Configuration des hooks Claude Code dans $SETTINGS_FILE..."
 import json, os
 
 settings_path = os.path.expanduser("$SETTINGS_FILE")
-hook_cmd = "$SCRIPT_DIR/claude_hook.py"
+venv_py = os.path.join("$SCRIPT_DIR", ".venv", "bin", "python3")
+hook_script = os.path.join("$SCRIPT_DIR", "claude_hook.py")
+hook_cmd = f"{venv_py} {hook_script}"
 
 data = {}
 if os.path.exists(settings_path):

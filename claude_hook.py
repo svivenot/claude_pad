@@ -1,4 +1,4 @@
-#!/usr/bin/env /Users/sylvain/macropad/.venv/bin/python3
+#!/usr/bin/env python3
 """
 Hook Claude Code pour Macropad EezBotFun v1.3.
 
