@@ -35,21 +35,26 @@ winget install --exact dorssel.usbipd-win
 Branchez votre Macropad en USB, puis toujours dans PowerShell (Admin) :
 
 ```powershell
-# 1. Lister les périphériques USB
+# 1. Lister les périphériques USB connectés
 usbipd list
 
-# Vous devriez voir une ligne avec VID:PID 303a:1001 (Espressif Systems)
-# 2. Enregistrer le périphérique pour le partage
-usbipd bind --hardware-id 303a:1001
+# Vous devriez voir une ligne avec :
+# VID:PID 303a:0012 (EezBotFun MicroPad / Smart Reach, LLC)
+# Notez le BUSID (ex: 1-4) ou utilisez le hardware-id :
+
+# 2. Enregistrer le périphérique pour le partage (une seule fois)
+usbipd bind --hardware-id 303a:0012
+# (ou alternativement avec son Bus ID) : usbipd bind --busid <BUSID>
 ```
 
 ### Étape 3 : Attacher le Macropad à WSL2
 
-Toujours dans PowerShell (Admin ou normal) :
+Toujours dans PowerShell :
 
 ```powershell
-# Attachement persistant automatique
-usbipd attach --wsl --hardware-id 303a:1001 --auto-attach
+# Attachement automatique à WSL2 (reconnecte automatiquement au rebranchement)
+usbipd attach --wsl --hardware-id 303a:0012 --auto-attach
+# (ou avec son Bus ID) : usbipd attach --wsl --busid <BUSID> --auto-attach
 ```
 
 > [!TIP]
