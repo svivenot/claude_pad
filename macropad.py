@@ -5,6 +5,7 @@ Protocole : 'cus' (Customised Display Protocol) et 'ebf' (Configuration).
 """
 
 import json
+import os
 import struct
 import sys
 import time
