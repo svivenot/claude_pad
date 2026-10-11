@@ -55,19 +55,25 @@ usbipd attach --wsl --hardware-id 303a:1001 --auto-attach
 > [!TIP]
 > Avec l'option `--auto-attach`, le Macropad sera automatiquement réattaché à WSL2 chaque fois que vous le débranchez/rebranchez ou que vous démarrez Windows.
 
-### Étape 4 : Permissions sous WSL2
+### Étape 4 : Outils USB & Permissions sous WSL2
 
 Basculez dans votre terminal **WSL2** (Ubuntu / Debian) :
 
 ```bash
-# 1. Vérifier que le périphérique série est bien visible
+# 1. Installer les outils de support USB Linux (recommandé)
+sudo apt update && sudo apt install -y usbutils linux-tools-virtual hwdata
+
+# 2. Vérifier que le périphérique série est bien visible
+lsusb
+# Vous devez voir "Espressif Systems" ou VID:PID 303a:1001
+
 ls -l /dev/ttyACM*
 # Vous devriez voir /dev/ttyACM0
 
-# 2. Ajouter votre utilisateur au groupe dialout pour accéder au port série sans sudo
+# 3. Ajouter votre utilisateur au groupe dialout pour accéder au port série sans sudo
 sudo usermod -aG dialout $USER
 
-# 3. Appliquer le nouveau groupe (ou fermez et rouvrez votre terminal WSL)
+# 4. Appliquer le nouveau groupe (ou fermez et rouvrez votre terminal WSL)
 newgrp dialout
 ```
 
